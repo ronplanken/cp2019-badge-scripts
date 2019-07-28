@@ -9,8 +9,9 @@ direction = 0
 apps = []
 current_index = 0
 status = 0
+last_update = 0
 
-rgb.setfont(1)
+rgb.setfont(0)
 
 if not wifi.status():
     data, size, frames = animation_connecting_wifi
@@ -19,6 +20,11 @@ if not wifi.status():
     rgb.gif(data, (12, 0), size, frames)
     wifi.connect()
     if wifi.wait():
+        if not ntp.set_NTP_time():
+            print("Error setting time")
+            system.reboot()
+        print("First ts: " + str(time.time()))
+        last_update = time.time()
         rgb.clear()
         rgb.framerate(20)
     else:
@@ -40,14 +46,13 @@ def clear():
     rgb.clear()
 
 def render_current_sensor():
-    global status
+    global status, apps
     status = 1
     clear()
     app = apps[current_index]
     show_sensor_name(app["SensorName"])
-    time.sleep(5)
+    time.sleep(3)
     status = 0
-    clear()
 
 if not wifi.status():
     print("Error connecting to wifi")
@@ -71,8 +76,9 @@ def input_down(pressed):
 
 def get_data():
     global apps
-    result = urequests.get('http://IP_ADDRESS:55555')
-    apps = result.json()
+    if wifi.wait():
+        result = urequests.get('http://204.2.68.149:55555')
+        apps = result.json()
 
 buttons.register(defines.BTN_B, input_B)
 buttons.register(defines.BTN_UP, input_up)
@@ -85,6 +91,11 @@ while direction != defines.BTN_B:
         clear()
         app = apps[current_index]
         show_sensor_value(app["SensorValue"])
+        if time.time() - last_update > 30:
+            last_update = time.time()
+            get_data()
         time.sleep(0.2)
     else:
-        time.sleep(1)
+        time.sleep(0.2)
+
+system.reboot()
