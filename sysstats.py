@@ -7,11 +7,11 @@ rgb.framerate(1)
 
 direction = 0
 apps = []
-current_index = 0
+current_index = 1
 status = 0
 last_update = 0
 
-rgb.setfont(0)
+rgb.setfont(1)
 
 if not wifi.status():
     data, size, frames = animation_connecting_wifi
@@ -20,11 +20,6 @@ if not wifi.status():
     rgb.gif(data, (12, 0), size, frames)
     wifi.connect()
     if wifi.wait():
-        if not ntp.set_NTP_time():
-            print("Error setting time")
-            system.reboot()
-        print("First ts: " + str(time.time()))
-        last_update = time.time()
         rgb.clear()
         rgb.framerate(20)
     else:
@@ -39,8 +34,9 @@ if not wifi.status():
 def show_sensor_name(text):
     rgb.scrolltext(text, (255,255,255), (0,0), rgb.PANEL_WIDTH)
 
-def show_sensor_value(text):
-    rgb.text(text, (255,255,255), (0,0))
+def show_sensor_value(name, value):
+    rgb.text(name, (255,255,255), (0,1))
+    rgb.text(value, (255,255,255), (23,1))
 
 def clear():
     rgb.clear()
@@ -78,7 +74,16 @@ def get_data():
     global apps
     if wifi.wait():
         result = urequests.get('http://204.2.68.149:55555')
-        apps = result.json()
+        if result.status_code == 200:
+            rgb.pixel((0, 255, 0), (31, 7))  # green for new data
+            try:
+                apps = result.json()
+            except:
+                rgb.pixel((255, 0, 0), (31, 7))  # red for error
+        else:
+            rgb.pixel((255, 0, 0), (31, 7))  # red for error
+            rgb.text('E {}'.format(result.status_code))
+        
 
 buttons.register(defines.BTN_B, input_B)
 buttons.register(defines.BTN_UP, input_up)
@@ -87,15 +92,18 @@ buttons.register(defines.BTN_DOWN, input_down)
 get_data()
 
 while direction != defines.BTN_B:
+    print(last_update)
     if status != 1:
-        clear()
-        app = apps[current_index]
-        show_sensor_value(app["SensorValue"])
-        if time.time() - last_update > 30:
-            last_update = time.time()
-            get_data()
-        time.sleep(0.2)
+        if last_update > 30:
+            last_update = 0
+            #get_data()
+            clear()
+            app = apps[current_index]
+            show_sensor_value(app["SensorName"], "{0:.0f}".format(time.time()))
+        else:
+            last_update += 1
+        time.sleep(0.1)
     else:
-        time.sleep(0.2)
+        time.sleep(0.1)
 
 system.reboot()
