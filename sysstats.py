@@ -5,6 +5,8 @@ rgb.background((0,0,0))
 rgb.clear()
 rgb.framerate(1)
 
+REMOTE_STATS_SERVER = 'http://204.2.68.149:55555'
+
 direction = 0
 apps = []
 current_index = 1
@@ -73,7 +75,7 @@ def input_down(pressed):
 def get_data():
     global apps
     if wifi.wait():
-        result = urequests.get('http://204.2.68.149:55555')
+        result = urequests.get(REMOTE_STATS_SERVER)
         if result.status_code == 200:
             rgb.pixel((0, 255, 0), (31, 7))  # green for new data
             try:
